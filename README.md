@@ -1,1 +1,1 @@
-# MICB475
+# MICB475 Lab Notebook
