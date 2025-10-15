@@ -1,8 +1,15 @@
 Topic/Research Question has been chosen: 
--  How does the microbiome differ based on the age of onset of multiple sclerosis. 
+-  How does the microbiome differ based on the age of onset of multiple sclerosis 
+-  We have the duration of dieasea and age as well so we can find the onset and duration of MS.
+-  Using alpha and beta diversity to compare between groups (Data analysis)
+-  Indicator species analysis + Differential abundnace (diff between age groups but need to set with something as baseline) + functional analysis... Do a bit more than alpha and beta
+-  Come up with 4-5 figures 
+-  2 or 3 panels per figure
+
+Next steps:
+-  Follow the Qiime2 processing it can take up to a few days should be done by next meeting 
+-  Start the proposal for next meeting so that Chad can take a look at it 
+
 Project roles:
-- 
-- 
-- 
-- 
-Project timeline:
+-  QiangCheng Yu and Marcelo Reinaldo will be mostly in charge of coding related work (Qiime2 will be done by QiangCheng Yu and with R processing and analysis will be mainly Marcelo with the help of Yu)
+-  Petko and Kevin will be mostly responsible for the written portion of the project but Marcelo and QiangCheng could assist with editing whenever needed. 
