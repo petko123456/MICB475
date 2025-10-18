@@ -1,1 +1,103 @@
 
+cd ..
+cd data
+mkdir ms
+cd ms
+
+qiime tools import \
+  --type "SampleData[SequencesWithQuality]" \
+  --input-format SingleEndFastqManifestPhred33V2 \
+  --input-path /datasets/project_2/MS/ms_manifest.tsv \
+  --output-path ./demux_seqs.qza
+
+qiime demux summarize \
+  --i-data demux_seqs.qza \
+  --o-visualization demux.qzv
+
+qiime dada2 denoise-single \
+  --i-demultiplexed-seqs demux_seqs.qza \
+  --p-trim-left 0 \
+  --p-trunc-len 151 \
+  --o-representative-sequences rep-seqs.qza \
+  --o-table table.qza \
+  --o-denoising-stats stats.qza
+
+qiime feature-table summarize \
+  --i-table table.qza \
+  --o-visualization table.qzv \
+  --m-sample-metadata-file /datasets/project_2/MS/ms_metadata.tsv
+  
+qiime feature-table tabulate-seqs \
+  --i-data rep-seqs.qza \
+  --o-visualization rep-seqs.qzv
+
+qiime feature-classifier classify-sklearn \
+  --i-classifier /datasets/classifiers/silva-138-99-515-806-nb-classifier.qza \
+  --i-reads rep-seqs.qza \
+  --o-classification taxonomy.qza
+
+qiime metadata tabulate \
+  --m-input-file taxonomy.qza \
+  --o-visualization taxonomy.qzv
+  
+qiime taxa barplot \
+  --i-table table.qza \
+  --i-taxonomy taxonomy.qza \
+  --m-metadata-file /datasets/project_2/MS/ms_metadata.tsv \
+  --o-visualization taxa-bar-plots.qzv
+
+qiime taxa filter-table \
+  --i-table table.qza \
+  --i-taxonomy taxonomy.qza \
+  --p-exclude mitochondria,chloroplast,eukaryota,archaea,unassigned \
+  --o-filtered-table table_bac.qza
+
+qiime taxa barplot \
+  --i-table table_bac.qza \
+  --i-taxonomy taxonomy.qza \
+  --m-metadata-file /datasets/project_2/MS/ms_metadata.tsv \
+  --o-visualization taxa_bar_plots2.qzv
+
+qiime feature-table summarize \
+  --i-table table_bac.qza \
+  --o-visualization table_bac.qzv \
+  --m-sample-metadata-file /datasets/project_2/MS/ms_metadata.tsv
+
+qiime phylogeny align-to-tree-mafft-fasttree \
+  --i-sequences rep-seqs.qza \
+  --o-alignment aligned-rep-seqs.qza \
+  --o-masked-alignment masked-aligned-rep-seqs.qza \
+  --o-tree unrooted-tree.qza \
+  --o-rooted-tree rooted-tree.qza 
+
+qiime diversity alpha-rarefaction \
+  --i-table table.qza \
+  --i-phylogeny rooted-tree.qza \
+  --p-max-depth 34000 \
+  --m-metadata-file /datasets/project_2/MS/ms_metadata.tsv \
+  --o-visualization alpha-rarefaction.qzv
+
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny rooted-tree.qza \
+  --i-table table_bac.qza \
+  --p-sampling-depth 12038 \
+  --m-metadata-file /datasets/project_2/MS/ms_metadata.tsv \
+  --output-dir core-metrics-results
+
+qiime tools export \
+--input-path /data/ms/taxonomy.qza \
+--output-path table_export 
+
+qiime tools export \
+--input-path /data/ms/rooted-tree.qza \
+--output-path table_export 
+
+qiime tools export \
+--input-path /data/ms/table_bac.qza \
+--output-path table_export 
+
+cd table_export
+biom convert \
+-i feature-table.biom \
+--to-tsv \
+-o feature-table.txt
