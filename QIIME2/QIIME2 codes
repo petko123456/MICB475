@@ -77,13 +77,6 @@ qiime diversity alpha-rarefaction \
   --m-metadata-file /datasets/project_2/MS/ms_metadata.tsv \
   --o-visualization alpha-rarefaction.qzv
 
-qiime diversity core-metrics-phylogenetic \
-  --i-phylogeny rooted-tree.qza \
-  --i-table table_bac.qza \
-  --p-sampling-depth 12038 \
-  --m-metadata-file /datasets/project_2/MS/ms_metadata.tsv \
-  --output-dir core-metrics-results
-
 qiime tools export \
 --input-path /data/ms/taxonomy.qza \
 --output-path table_export 
