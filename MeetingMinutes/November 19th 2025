@@ -36,5 +36,5 @@ PRESENTATIONS: First week of december
 --> Add the elipses (stack elipses --> show the lack of clustering)
 --> bar plots: colour (shanon diversity)
 --> Keep the colours consistent especially with the age groups
--- Concerns:
-  - 
+-- Concerns: RUn multi-linear regression before going for random forest 
+
