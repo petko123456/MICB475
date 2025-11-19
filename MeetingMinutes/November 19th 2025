@@ -1,1 +1,40 @@
 Project proposal meeting -> Specifics to looking over AIM 1, 2, 3
+
+
+- Take away the NA in the bar plots. 
+- Why are we keeping to control? We are comparing to healthy controls --> Then the healthy controls should not have age of onset. 
+  - Already removed the controls but for age of onset control is not really relevant --> looking at triangles not seeing any clustering. 
+  - No significance of relapses as well. 
+  - Show the lack of clustring as well. 
+- We are trying to identify key taxa that are d_seq
+- Even though we are not getting specific changes but we are getting changes in each of the genus. 
+  - find out if they are typically associated as good or bad bacteria. 
+  - Genus graph --> relative to the older group but we are comparing to the different ages. 
+- isa_sig: Interested in the ones that are unique to aparticular group the ones that is specific to 50+ so you should be looking at ones that are unique to specific age groups. There is around 5 that is specific to one age group. It is mostly in the 50+ age group. 
+  - We can say that those that are older have something that is more unique and distinct. 
+- Adonis function --> Add another function 
+- Severity is significant but the relapse is not significant. 
+- Have to remove the "na" from onset age.
+- Not much fluctuation in microbiome with age
+- We can potentially say or look at first 5 years after their diagnosis.
+- Maybe we can do a machine learning thing? Random forest? Do it with other demographic data (antibiotic use). Would we try to predict the age of onset (run a random forest with meta data) --> we did not see big microbiome changes with age of onset but are there other factors that can come into play? (This is the way that we can talk about limiatations)
+  - last graph would be a geni-index? Predictor 
+  - Random forest... Goes thorugh correcting the model and such. 
+  - Antibiotics --> big one (confounding variarble) where you can end the story, we looked at "these things" this is what we got
+
+Potential conclusion: We can say that age of onset there is no significant impact on the correlation to MS and such. 
+
+the Diversity metric first (community level) with age of onset --> ISA, D_seq, core-microbiome (we do see changes but there is couple taxa, but not effecting the community itself --> based on random forest there can be other factors that cna be better predictor of MS age of onset
+-> Remove the controls bceause we are comparing older vs younger (remove the na) and focus on the MS patients. 
+-> onset age groups are fine. 
+-> d_seq has a few increase or decrease (there is mostly increase --> look at literature and look if those bacterias are good or bad types --> this will show if this is a better or worse profile), however, this is not going to impact the diversity. 
+
+PRESENTATIONS: First week of december
+
+--> do the random forest + get the power point together --> feedback on formatting figure. 
+--> Revised proposal --> update those tomorrow 
+--> Add the elipses (stack elipses --> show the lack of clustering)
+--> bar plots: colour (shanon diversity)
+--> Keep the colours consistent especially with the age groups
+-- Concerns:
+  - 
