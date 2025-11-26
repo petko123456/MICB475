@@ -1,0 +1,36 @@
+- if you do terms it is best for first variable to be significant, it gets harder each time (By term) by margin is equal changes. Filter out the NA just get rid of them completely. 
+  - Remove them before even running anything, remove for phyloseq 
+  - No need to talk about the controls for the presentation.
+- Add permanova for P values -> 
+- Remove NA from everything 
+- We have D seq as well 
+- Diversity will be figure 1 will be diversity matrix and it is not significnt -> Did you plot shannon and should also do bray curtis.
+  - Alpha = A beta will be part B and shanon and bray curtis will be the other parts. 
+    - Core microbiome supports diverity analysis. --> should be figure 2 beacuse it will support figure 1 the key ASV were all shared, therefore supports that there is no significance. 
+  - Figure 3 dseq 
+Overall fingerprint is similar. but be careful on presentation
+- prevelaence is quite high -> don't go above .3 
+
+anything that is relevant to the 30-40 group, then focus on the 2 groups just ignore the middle group -> Figure 4 or table 1? Most stuff is not changed but there is a couple of clusters or driving 
+- Red is significant and blue is signifncat, most are red dots, it matches up with diversity so you can compare it to other functions. 
+- It shows that we are all linked, and they are 
+
+
+Don't need to stick to proposal at all, just make sure that you have a good cohesive story. 
+Don't present everything
+
+Alpha and beta diversity -> fingerprint in the microbiome -> the key inflammatory factors are there
+Figure 3: Dseq -> Volcano plot
+Figure 4: ISA 
+Overall trends 
+Random forest should not be included in the presentation. 
+Comparing diveristy matrix with relapse count with severity --> is it significant, 
+
+Enough with age of onset for the prsentation, no need to talk about the second half
+
+Email him to arrange it, can be over zoom, what should we go into the manuscirpt, be in terms of intergrating the second half it is the most important.
+There can be some significnace, talk to him about what we should put down. 
+
+Don't even worry baout the second half things 
+
+Don't include the other half in the introduction beacuse we are not bringing up the second half of the presentation in the presentation. 
