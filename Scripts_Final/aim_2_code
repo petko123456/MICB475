@@ -1,0 +1,355 @@
+
+
+#### AIM 2 ####
+
+# Rarefied object for relative-abundance / core members / ISA.  (REPEAT??????)
+ms_ms_rare <- ms_ps_rare %>%
+  subset_samples(disease == "MS") %>%
+  subset_samples(!is.na(onset_age_group))
+
+# Unrarefied object for DESeq2
+ms_ms <- ms_ps %>%
+  subset_samples(disease == "MS") %>%
+  subset_samples(!is.na(onset_age_group))
+
+# Make sure onset_age_group is an ordered factor
+sample_data(ms_ms_rare)$onset_age_group <- factor(
+  sample_data(ms_ms_rare)$onset_age_group,
+  levels = c("18-29", "30-49", "50+")
+)
+
+### REPEAT ###
+sample_data(ms_ms)$onset_age_group <- factor(
+  sample_data(ms_ms)$onset_age_group,
+  levels = c("18-29", "30-49", "50+")
+)
+
+### AGGREGATE AT GENUS LEVEL
+
+## 2A. Relative abundance (compositional)
+
+ms_ms_RA <- transform_sample_counts(ms_ms_rare, function(x) x / sum(x))
+
+## 2B. Core microbiome per onset group
+
+# Subset by onset-age group
+ms_early_RA <- subset_samples(ms_ms_RA, onset_age_group == "18-29")
+ms_mid_RA   <- subset_samples(ms_ms_RA, onset_age_group == "30-49")
+ms_late_RA  <- subset_samples(ms_ms_RA, onset_age_group == "50+")
+
+early_core   <- core_members(ms_early_RA,   detection = 0.001, prevalence = 0.3)
+mid_core   <- core_members(ms_mid_RA,   detection = 0.001, prevalence = 0.3)
+late_core  <- core_members(ms_late_RA,  detection = 0.001, prevalence = 0.3)
+
+## 2C. Venn diagram of core taxa
+
+core_lists <- list(
+  "18-29 years old" = early_core,
+  "30-49 years old" = mid_core,
+  "≥50 years old"   = late_core
+)
+
+
+venn_core <- ggVennDiagram(
+  core_lists,
+  label = "both",
+  label_alpha = 0   # removes dark label background
+) +
+  scale_fill_gradient(
+    low  = "grey90",
+    high = "grey30"
+  ) +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    text = element_text(color = "black")
+  )
+
+venn_core <- venn_core +
+  coord_cartesian(clip = "off") +
+  theme(
+    legend.position = "none",
+    text = element_text(color = "black"),
+    plot.margin = ggplot2::margin(15, 15, 25, 15)
+  )
+
+
+ggsave("Fig2_core_venn.png", venn_core, height = 4, width = 5, dpi = 300)
+
+## 2D. Indicator Species Analysis (ISA)
+
+# Collapse to Genus, then relative abundance
+ms_genus <- tax_glom(ms_ms_rare, taxrank = "Genus", NArm = FALSE)
+ms_genus_RA <- transform_sample_counts(ms_genus, function(x) x / sum(x))
+
+# ISA: onset_age_group as grouping variable
+isa_ms <- multipatt(
+  t(otu_table(ms_genus_RA)),
+  cluster = sample_data(ms_genus_RA)$onset_age_group
+)
+
+# Text summary in console
+summary(isa_ms)
+
+# Attach taxonomy and filter significant genera (p < 0.05)
+tax_df <- tax_table(ms_genus_RA) %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "ASV")
+
+isa_sig <- isa_ms$sign %>%
+  rownames_to_column(var = "ASV") %>%
+  left_join(tax_df, by = "ASV") %>%
+  filter(p.value < 0.05)
+
+# View significant indicator taxa
+View(isa_sig)
+
+write_csv(isa_sig, "Table_2_ISA_significant.csv")
+
+
+## 2E. Contextualize key taxa
+
+# Use isa_sig and DESeq2 results below to see whether
+# Akkermansia muciniphila, Faecalibacterium prausnitzii,
+# or Methanobrevibacter smithii appear, then interpret
+# them using published studies.
+
+## 2F. Differential Abundance (DESeq2)
+
+## Use unrarefied phyloseq object (ms_ms), add 1 to all counts
+ms_ms_plus1 <- transform_sample_counts(ms_ms, function(x) x + 1)
+
+## Build DESeq2 object with onset_age_group as design
+dds_onset <- phyloseq_to_deseq2(ms_ms_plus1, ~ onset_age_group)
+
+# Run DESeq2
+dds_onset <- DESeq(dds_onset)
+
+# early vs late onset
+
+res_early_vs_late <- results(
+  dds_onset,
+  contrast = c("onset_age_group", "18-29", "50+"),
+  tidy = TRUE
+)
+
+# Filter significant taxa
+res_sig <- res_early_vs_late %>%
+  filter(
+    !is.na(padj),
+    padj < 0.01,
+    abs(log2FoldChange) > 2
+  ) %>%
+  dplyr::rename(ASV = "row")
+
+# Add taxonomy for interpretation / plotting
+tax_full <- tax_table(ms_ms) %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "ASV")
+
+res_sig_tax <- res_sig %>%
+  left_join(tax_full, by = "ASV")
+
+View(res_sig_tax)
+
+## 2G. Volcano plot + bar plot for significant taxa
+# 1) DESeq2 results -> add index column (row number)
+res_df <- as.data.frame(res_early_vs_late) %>%
+  tibble::rownames_to_column("idx") %>%
+  mutate(idx = as.integer(idx)) %>%
+  filter(!is.na(padj))
+
+# 2) Taxonomy -> add same index column, keep ASV hash + Genus
+tax_map <- as.data.frame(tax_full) %>%
+  tibble::rownames_to_column("idx") %>%
+  mutate(idx = as.integer(idx)) %>%
+  # keep the ASV hash + genus (add other ranks if you want)
+  transmute(
+    idx,
+    ASV_hash = ASV,
+    Genus = Genus
+  )
+
+# 3) Join + clean genus text
+volcano_df <- res_df %>%
+  left_join(tax_map, by = "idx") %>%
+  mutate(
+    neg_log10_padj = -log10(padj),
+    significant = padj < 0.01 & abs(log2FoldChange) > 2,
+    Genus_clean = Genus %>%
+      as.character() %>%
+      str_remove("^g__") %>%
+      str_remove("-[0-9]+$") %>%
+      str_replace_all("_", " ")
+  )
+
+# quick sanity check
+volcano_df %>%
+  filter(significant) %>%
+  select(idx, ASV_hash, Genus, log2FoldChange, padj) %>%
+  head()
+
+gg_volcano <- ggplot(volcano_df,
+                     aes(x = log2FoldChange, y = neg_log10_padj)) +
+  geom_point(aes(color = significant), alpha = 0.7, size = 2) +
+  scale_color_manual(
+    values = c(`FALSE` = "grey70", `TRUE` = "steelblue"),
+    breaks = c(FALSE, TRUE),
+    labels = c("Not significant", "Significant"),
+    name   = NULL
+  ) +
+  geom_vline(xintercept = c(-2, 2), linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.01), linetype = "dashed") +
+  ggrepel::geom_text_repel(
+    data = subset(volcano_df, significant & !is.na(Genus_clean) & Genus_clean != ""),
+    aes(label = Genus_clean),
+    size = 3,
+    max.overlaps = 30,
+    box.padding = 0.3,
+    point.padding = 0.2
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    legend.position = "top",
+    axis.text  = element_text(size = 11),
+    axis.title = element_text(size = 12, face = "bold")
+  ) +
+  labs(
+    x = "log2 fold-change (18–29 vs ≥50)",
+    y = "-log10 adjusted p-value",
+    color = NULL
+  ) +
+  theme_classic(base_size = 12) +
+  theme(legend.position = "top")
+
+gg_volcano
+ggsave("Fig3B_volcano_early_vs_late.png", gg_volcano, height = 6, width = 9, dpi = 300)
+
+# Bar plot at Genus level for significant taxa
+
+res_sig_tax_genus <- res_sig_tax %>%
+  mutate(
+    Genus = as.character(Genus),
+    Genus = str_remove(Genus, "-[0-9]+$"),
+    Genus = str_remove(Genus, "^g__"),
+    Genus_plot = make.unique(Genus),
+    direction = log2FoldChange > 0
+  ) %>%
+  arrange(log2FoldChange) %>%  # <- orders rows
+  mutate(
+    Genus_plot = factor(Genus_plot, levels = Genus_plot)  # <- locks that order
+  )
+res_sig_tax_genus <- res_sig_tax_genus %>%
+  mutate(
+    Genus_label = str_remove(Genus_plot, "\\.[0-9]+$")
+  )
+res_sig_tax_genus <- res_sig_tax_genus %>%
+  mutate(
+    Genus_label = Genus_plot %>%
+      str_remove("\\.[0-9]+$") %>%   # remove .1, .2, etc
+      str_replace_all("_", " ")      # replace underscores with spaces
+  )
+
+gg_bar <- ggplot(
+  res_sig_tax_genus,
+  aes(x = Genus_plot, y = log2FoldChange, fill = direction)
+) +
+  scale_x_discrete(labels = res_sig_tax_genus$Genus_label) +
+  geom_col(width = 0.8) +
+  geom_errorbar(
+    aes(ymin = log2FoldChange - lfcSE,
+        ymax = log2FoldChange + lfcSE),
+    width = 0.2,
+    linewidth = 0.5
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  coord_flip() +
+  xlab("Genus") +
+  ylab("log2 fold-change (18–29 vs ≥50)") +
+  scale_fill_manual(
+    values = c("grey40", "steelblue"),
+    labels = c("Late-onset enriched", "Early-onset enriched"),
+    name = NULL
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    legend.position = "top",
+    axis.text.y = element_text(size = 11),   # <- was 10
+    axis.text.x = element_text(size = 11),
+    axis.title  = element_text(size = 12, face = "bold")
+  )
+
+ggsave("Fig3A_bar_genus_early_vs_late.png", gg_bar, height = 5, width = 6, dpi = 300)
+
+# Put cores in a named list (already used for the Venn)
+core_lists <- list(
+  `18-29` = early_core,
+  `30-49` = mid_core,
+  `50+`   = late_core
+)
+
+# Total distinct core ASVs across all groups
+all_core_union <- unique(unlist(core_lists))
+n_union <- length(all_core_union)
+
+# Helper: for each group, how many of its core ASVs are shared vs unique?
+core_summary <- map_dfr(
+  names(core_lists),
+  ~{
+    this_group   <- .x
+    this_core    <- core_lists[[.x]]
+    
+    # cores from the *other* onset groups
+    other_core   <- unique(unlist(core_lists[names(core_lists) != .x]))
+    
+    shared_with_others <- intersect(this_core, other_core)
+    unique_to_group    <- setdiff(this_core, other_core)
+    
+    tibble(
+      onset_group      = this_group,
+      n_core_ASVs      = length(this_core),
+      n_shared_ASVs    = length(shared_with_others),
+      n_unique_ASVs    = length(unique_to_group),
+      pct_shared_group = round(100 * n_shared_ASVs / n_core_ASVs, 1),
+      pct_unique_group = round(100 * n_unique_ASVs / n_core_ASVs, 1)
+    )
+  }
+)
+
+core_summary_clean <- core_summary %>%
+  mutate(
+    onset_group = recode(
+      onset_group,
+      "18-29" = "18-29 years",
+      "30-49" = "30-49 years",
+      "50+"   = ">=50 years"
+    )
+  )
+core_summary_long <- core_summary_clean %>%
+  select(onset_group, n_core_ASVs, n_shared_ASVs, n_unique_ASVs) %>%
+  pivot_longer(
+    cols = -onset_group,
+    names_to = "metric",
+    values_to = "count"
+  ) %>%
+  mutate(
+    metric = recode(
+      metric,
+      n_core_ASVs   = "Core ASVs (total)",
+      n_shared_ASVs = "Shared core ASVs",
+      n_unique_ASVs = "Unique core ASVs"
+    )
+  )
+
+core_summary_table <- core_summary_long %>%
+  pivot_wider(
+    names_from  = onset_group,
+    values_from = count
+  ) %>%
+  arrange(metric)
+
+write.csv(
+  core_summary_table,
+  "table1_core_ASV_summary_table.csv",
+  row.names = FALSE
+)
