@@ -1,0 +1,251 @@
+
+### AIM 4 — Random Forest using confounding variables ###
+
+## 1. Start from MS-only metadata and keep early/late onset
+meta_ms <- as(sample_data(ms_ms_rare), "data.frame")
+
+meta_ms_el <- meta_ms %>%
+  filter(onset_age_group %in% c("18-29", "50+")) %>%
+  mutate(
+    onset_binary = factor(
+      ifelse(onset_age_group == "18-29", "early", "late"),
+      levels = c("early", "late")
+    )
+  )
+
+table(meta_ms_el$onset_binary)  # sanity check: should show both early and late
+
+
+## 2. Select potential confounders (all columns here DO exist)
+confounders <- meta_ms_el %>%
+  select(
+    # Demographic / anthropometric
+    sex,
+    ethnicity,
+    weight, height, bmi,
+    
+    # MS severity / clinical
+    disease_course,
+    treatment_status,
+    treatments,
+    administration,
+    edss,
+    MSSS,
+    relapse_number,
+    
+    # Comorbidities
+    anxiety,
+    depression,
+    asthma,
+    eczema,
+    eating_disorder,
+    manic_depression_bipolar,
+    type2diabetes,
+    
+    # Meds / supplements
+    ocps_y_n,
+    nsaids,
+    probiotics,
+    rxmeds,
+    otc_meds,
+    
+    # Lifestyle / household
+    smoke,
+    recreational_drug,
+    pets,
+    children_number,
+    roommates,
+    
+    # Socioeconomic
+    education,
+    occupation,
+    
+    # Diet
+    diet_no_special_needs,
+    diet_special_needs
+  )
+
+
+## 3. Clean: characters → factors, drop all-NA & constant columns
+confounders <- confounders %>%
+  mutate(across(where(is.character), as.factor))
+
+# Drop all-NA columns
+non_all_na <- sapply(confounders, function(x) sum(!is.na(x)) > 0)
+confounders <- confounders[, non_all_na, drop = FALSE]
+
+# Drop columns with < 2 unique non-NA values (constants)
+non_constant <- sapply(confounders, function(x) dplyr::n_distinct(x, na.rm = TRUE) > 1)
+confounders <- confounders[, non_constant, drop = FALSE]
+
+str(confounders)  # optional: check what’s left
+
+
+## 4. Build design matrix and scale
+X_mat <- model.matrix(~ ., data = confounders)[, -1, drop = FALSE]
+X_scaled <- scale(X_mat)
+
+## 5. Outcome for RF
+outcome <- meta_ms_el$onset_binary
+table(outcome)  # should have both levels
+
+set.seed(421)
+k <- 5
+folds <- createFolds(outcome, k = k, list = TRUE)
+
+tune_grid <- expand.grid(
+  mtry          = c(3, 6, 10),
+  splitrule     = c("gini", "extratrees"),
+  min.node.size = c(2, 3, 4)
+)
+
+source("randomforest_functions.R")
+
+rf_conf <- run_rf(
+  X        = as.data.frame(X_scaled),
+  y        = outcome,
+  fold_list = folds,
+  hyper    = tune_grid,
+  rngseed  = 421
+)
+
+rf_conf$auc_train
+rf_conf$auc_test
+rf_conf$auc_train_ci
+rf_conf$auc_test_ci
+
+rf_conf$importance
+
+# 1. Coerce to a plain data.frame
+importance_df <- as.data.frame(rf_conf$importance)
+
+# 2. Take top 15 by MeanDecreaseGini using base/head (not slice)
+importance_top <- importance_df %>%
+  arrange(desc(MeanDecreaseGini))
+
+importance_top <- head(importance_top, 15)
+
+# 3. Make Feature an ordered factor for plotting
+importance_top$Feature <- factor(
+  importance_top$Feature,
+  levels = rev(importance_top$Feature)
+)
+
+# 4. Plot
+gg_importance <- ggplot(importance_top,
+                        aes(x = Feature, y = MeanDecreaseGini)) +
+  geom_col() +
+  coord_flip() +
+  ylab("Importance (MeanDecreaseGini)") +
+  xlab(NULL) +
+  theme_classic(base_size = 12)
+
+gg_importance
+
+ggsave("rf_confounders_importance_top15.png",
+       gg_importance, width = 5, height = 4)
+
+# rf_conf$train_labels and rf_conf$test_labels
+# each have: row, true_labels, predicted_probabilities
+
+roc_train <- roc(
+  response = rf_conf$train_labels$true_labels,
+  predictor = rf_conf$train_labels$predicted_probabilities
+)
+
+roc_test <- roc(
+  response = rf_conf$test_labels$true_labels,
+  predictor = rf_conf$test_labels$predicted_probabilities
+)
+
+
+# Extract points for ggplot
+train_df <- data.frame(
+  fpr = 1 - roc_train$specificities,
+  tpr = roc_train$sensitivities,
+  dataset = "Train"
+)
+
+test_df <- data.frame(
+  fpr = 1 - roc_test$specificities,
+  tpr = roc_test$sensitivities,
+  dataset = "Test"
+)
+
+roc_df <- bind_rows(train_df, test_df)
+
+# AUCs
+auc_train <- auc(roc_train)
+auc_test  <- auc(roc_test)
+
+gg_roc <- ggplot(roc_df, aes(x = fpr, y = tpr, colour = dataset)) +
+  geom_line(size = 1) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(
+    x = "False Positive Rate",
+    y = "True Positive Rate",
+    colour = NULL
+  ) +
+  annotate(
+    "text",
+    x = 0.55, y = 0.2,
+    label = sprintf(
+      "Train AUC = %.2f\nTest AUC = %.2f",
+      auc_train, auc_test
+    ),
+    hjust = 0,
+    size = 4
+  ) +
+  theme_minimal(base_size = 14)
+
+gg_roc
+ggsave("Fig5A_rf_confounders_ROC.png", gg_roc, width = 5, height = 4)
+
+# Clean up graph
+label_map <- c(
+  "MSSS" = "MS Severity Score (MSSS)",
+  "weight" = "Body weight",
+  "bmi" = "Body mass index (BMI)",
+  "height" = "Height",
+  "edss" = "Expanded Disability Status Scale (EDSS)",
+  "disease courseRRMS" = "Relapsing–remitting MS",
+  "rxmeds2" = "Number of medications",
+  "depression1" = "Depression diagnosis",
+  "occupationretired" = "Retired",
+  "pets1" = "Pet ownership",
+  "sexM" = "Male sex",
+  "administrationSubcutaneous" = "Subcutaneous administration",
+  "diet special needsNA" = "Special diet (not specified)",
+  "administrationOral" = "Oral administration",
+  "nsaids1" = "NSAID use"
+)
+
+
+imp_top15_clean <- importance_top %>%
+  mutate(
+    feature_clean = Feature %>%
+      str_replace_all("_", " ") %>%
+      str_replace_all("\\s+", " ") %>%
+      str_trim(),
+    feature_clean = recode(feature_clean, !!!label_map, .default = feature_clean)
+  ) %>%
+  arrange(MeanDecreaseGini) %>%
+  mutate(feature_clean = factor(feature_clean, levels = feature_clean))
+
+gg_imp_clean <- ggplot(imp_top15_clean, aes(x = feature_clean, y = MeanDecreaseGini)) +
+  geom_col(width = 0.8) +
+  coord_flip() +
+  labs(
+    x = NULL,
+    y = "Variable importance (Mean Decrease Gini)"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    axis.title.y = element_blank(),
+    axis.title.x = element_text(face = "bold"),
+    axis.text.y = element_text(size = 12)
+  )
+
+gg_imp_clean
+
+ggsave("Fig5B_rf_confounders_importance_top15_clean.png", gg_imp_clean, width = 7.2, height = 5.2, dpi = 300)
