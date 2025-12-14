@@ -1,0 +1,10 @@
+ASV,s.18-29,s.30-49,s.50+,index,stat,p.value,Domain,Phylum,Class,Order,Family,Genus,Species
+0ad57dc8a87beafc41a6422968cbe3f7,1,0,1,5,0.44071921365820116,0.03,d__Bacteria,p__Bacteroidota,c__Bacteroidia,o__Bacteroidales,f__Barnesiellaceae,g__Incertae_Sedis,NA
+88b50a09c95bdb62df676285bdcfde44,0,0,1,3,0.29310569267760933,0.03,d__Bacteria,p__Actinomycetota,c__Actinobacteria,o__Micrococcales,f__Brevibacteriaceae,g__Brevibacterium,NA
+2e7193b35cf7424a5aeec1ac54468212,1,0,0,1,0.18203370452531634,0.025,d__Bacteria,p__Actinomycetota,c__Coriobacteriia,o__Coriobacteriales,f__Eggerthellaceae,g__Berryella,NA
+57f0e6566995476b5eae2b4237c930fd,0,0,1,3,0.22515126469156216,0.025,d__Bacteria,p__Bacillota,c__Bacilli,o__Erysipelotrichales,f__Erysipelotrichaceae,g__Incertae_Sedis,NA
+07f847da0f14d338851bff36302b1d5d,0,0,1,3,0.34516181381321337,0.025,d__Bacteria,p__Bacillota,c__Bacilli,o__Erysipelotrichales,f__Erysipelotrichaceae,g__Solobacterium,NA
+0ed13e9a3209e5ef433060aacd9e16ad,1,1,0,4,0.4298942277359498,0.045,d__Bacteria,p__Bacillota,c__Negativicutes,o__Acidaminococcales,f__Acidaminococcaceae,g__Acidaminococcus,NA
+05b3c37966de355dc39930c4103ff589,1,0,1,5,0.3836651222580742,0.045,d__Bacteria,p__Bacillota,c__Negativicutes,o__Veillonellales-Selenomonadales,f__Veillonellaceae,g__Veillonella,NA
+07c4e39ea04a7907c1d5d9b48d272a69,0,0,1,3,0.33651392790191886,0.035,d__Bacteria,p__Bacillota,c__Negativicutes,o__Veillonellales-Selenomonadales,f__Veillonellaceae,g__Negativicoccus,NA
+9d062faaf9e049fac158a185c7b9a4f7,0,0,1,3,0.30915086950231513,0.01,d__Bacteria,p__Bacillota,c__Clostridia,o__Lachnospirales,f__Lachnospiraceae,g__Oribacterium,NA
