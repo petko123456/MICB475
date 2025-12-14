@@ -1,0 +1,178 @@
+
+### AIM 3 ####
+
+## 3A. Subset to samples with complete severity data
+
+# Convert in the original phyloseq object
+meta_all <- as.data.frame(sample_data(ms_ps_rare_ms))
+
+meta_all$MSSS <- suppressWarnings(as.numeric(meta_all$MSSS))
+meta_all$relapse_number <- suppressWarnings(as.numeric(meta_all$relapse_number))
+
+# Write back into sample_data
+sample_data(ms_ps_rare_ms)$MSSS <- meta_all$MSSS
+sample_data(ms_ps_rare_ms)$relapse_number <- meta_all$relapse_number
+
+# Start from the rarefied phyloseq object from Aim 1
+ms_ps_rare_sev <- subset_samples(
+  ms_ps_rare_ms,
+  !is.na(MSSS) & !is.na(relapse_number)
+)
+
+# keep only MS cases, not controls (MAYBE: ASK TA)
+# ms_ps_rare_sev <- subset_samples(ms_ps_rare_sev, disease == "MS")
+
+# Drop any taxa with zero counts after subsetting
+ms_ps_rare_sev <- prune_taxa(taxa_sums(ms_ps_rare_sev) > 0, ms_ps_rare_sev)
+
+## 3B. Alpha diversity vs MSSS / relapse
+
+# 1) Alpha diversity (Observed, Shannon)
+alpha_df <- estimate_richness(
+  ms_ps_rare_sev,
+  measures = c("Observed", "Shannon")
+)
+
+# 2) Faith's PD
+phylo_pd <- pd(
+  t(otu_table(ms_ps_rare_sev)),
+  phy_tree(ms_ps_rare_sev),
+  include.root = FALSE
+)
+alpha_df$PD <- phylo_pd$PD
+
+# 3) Metadata as data frame
+meta_df <- as.data.frame(sample_data(ms_ps_rare_sev))
+
+# check for same number of samples
+stopifnot(nrow(alpha_df) == nrow(meta_df))
+
+# 4) Force rownames to be identical (by position) so we can safely bind by column
+rownames(alpha_df) <- rownames(meta_df)
+
+alpha_merged <- cbind(alpha_df, meta_df)
+
+# 5) Check that MSSS and relapse_number survived
+summary(alpha_merged$MSSS)
+sum(!is.na(alpha_merged$MSSS))
+
+summary(alpha_merged$relapse_number)
+sum(!is.na(alpha_merged$relapse_number))
+
+# 6) Spearman correlations
+
+cor_shannon_MSSS <- cor.test(
+  alpha_merged$Shannon,
+  alpha_merged$MSSS,
+  method = "spearman",
+  use = "complete.obs"
+)
+
+cor_PD_MSSS <- cor.test(
+  alpha_merged$PD,
+  alpha_merged$MSSS,
+  method = "spearman",
+  use = "complete.obs"
+)
+
+cor_shannon_relapse <- cor.test(
+  alpha_merged$Shannon,
+  alpha_merged$relapse_number,
+  method = "spearman",
+  use = "complete.obs"
+)
+
+## 3C. Reuse PCoA / ordination – add severity as gradient
+
+# Recompute Bray-curtis distance on the severity subset:
+bc_dm_sev <- phyloseq::distance(ms_ps_rare_sev, method = "bray")
+
+# PCoA ordination
+pcoa_bc_sev <- ordinate(
+  ms_ps_rare_sev,
+  method   = "PCoA",
+  distance = bc_dm_sev
+)
+
+# Plot with MSSS as colour, relapse_number as size
+gg_pcoa_MSSS <- plot_ordination(
+  ms_ps_rare_sev,
+  pcoa_bc_sev,
+  type = "samples"
+) +
+  geom_point(aes(colour = MSSS, size = relapse_number), alpha = 0.8) +
+  scale_colour_viridis_c(option = "plasma") +
+  labs(
+    colour = "MSSS",
+    size   = "Relapse count",
+    x = "PCOA1",
+    y = "PCOA2"
+  ) +
+  theme_bw()
+
+ggsave("aim3_pcoa_MSSS_relapse.png", gg_pcoa_MSSS, width = 5, height = 4)
+
+
+## 3D. PERMANOVA: community ~ severity / relapse
+
+# Start from severity subset
+meta_sev <- sample_data(ms_ps_rare_sev)
+
+# Coerce *hard* to base data.frame
+meta_sev <- as(meta_sev, "data.frame")
+meta_sev <- data.frame(meta_sev, check.names = TRUE, stringsAsFactors = FALSE)
+
+# Make sure MSSS and relapse_number are numeric
+meta_sev$MSSS           <- as.numeric(meta_sev$MSSS)
+meta_sev$relapse_number <- as.numeric(meta_sev$relapse_number)
+
+# Sanity check
+summary(meta_sev$MSSS)
+summary(meta_sev$relapse_number)
+
+# Make sure rownames of meta_sev line up with distance matrix labels
+all(rownames(meta_sev) == rownames(as.matrix(bc_dm_sev)))
+
+## PERMANOVA (Bray–Curtis) – community ~ MSSS + relapse_number
+adonis_sev <- adonis2(
+  as.matrix(bc_dm_sev) ~ MSSS + relapse_number,
+  data = meta_sev, by="margin"
+)
+
+adonis_sev
+
+# R² and p for MSSS
+R2_MSSS <- adonis_sev["MSSS", "R2"]
+p_MSSS  <- adonis_sev["MSSS", "Pr(>F)"]
+
+# R² and p for relapse_number
+R2_relapse <- adonis_sev["relapse_number", "R2"]
+p_relapse  <- adonis_sev["relapse_number", "Pr(>F)"]
+
+R2_MSSS; p_MSSS
+R2_relapse; p_relapse
+
+label_text <- sprintf(
+  "PERMANOVA:\nMSSS R² = %.3f (p = %.3f)\nRelapse R² = %.3f (p = %.3f)",
+  R2_MSSS, p_MSSS,
+  R2_relapse, p_relapse
+)
+
+## Add permanova to plot
+
+gg_pcoa_MSSS_annotated <- gg_pcoa_MSSS +
+  annotate("label",
+           x = min(pcoa_bc_sev$vectors[,1]) + 0.02,   # small pad from left
+           y = min(pcoa_bc_sev$vectors[,2]) + 0.02,   # small pad from bottom
+           label = label_text,
+           hjust = 0,
+           vjust = 0,
+           size = 4,
+           fill = "white",
+           alpha = 0.75,
+           label.size = 0)
+
+gg_pcoa_MSSS_annotated
+
+ggsave("Fig4_pcoa_with_permanova.png", gg_pcoa_MSSS_annotated, width = 10, height = 8)
+
