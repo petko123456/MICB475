@@ -18,7 +18,7 @@ ms_ps_rare_sev <- subset_samples(
   !is.na(MSSS) & !is.na(relapse_number)
 )
 
-# keep only MS cases, not controls (MAYBE: ASK TA)
+# keep only MS cases, not controls
 # ms_ps_rare_sev <- subset_samples(ms_ps_rare_sev, disease == "MS")
 
 # Drop any taxa with zero counts after subsetting
@@ -117,7 +117,6 @@ ggsave("aim3_pcoa_MSSS_relapse.png", gg_pcoa_MSSS, width = 5, height = 4)
 # Start from severity subset
 meta_sev <- sample_data(ms_ps_rare_sev)
 
-# Coerce *hard* to base data.frame
 meta_sev <- as(meta_sev, "data.frame")
 meta_sev <- data.frame(meta_sev, check.names = TRUE, stringsAsFactors = FALSE)
 
