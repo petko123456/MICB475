@@ -1,6 +1,6 @@
 #### AIM 2 ####
 
-# Rarefied object for relative-abundance / core members / ISA.  (REPEAT??????)
+# Rarefied object for relative-abundance / core members / ISA.
 ms_ms_rare <- ms_ps_rare %>%
   subset_samples(disease == "MS") %>%
   subset_samples(!is.na(onset_age_group))
@@ -16,7 +16,6 @@ sample_data(ms_ms_rare)$onset_age_group <- factor(
   levels = c("18-29", "30-49", "50+")
 )
 
-### REPEAT ###
 sample_data(ms_ms)$onset_age_group <- factor(
   sample_data(ms_ms)$onset_age_group,
   levels = c("18-29", "30-49", "50+")
@@ -107,11 +106,6 @@ write_csv(isa_sig, "Table_2_ISA_significant.csv")
 
 ## 2E. Contextualize key taxa
 
-# Use isa_sig and DESeq2 results below to see whether
-# Akkermansia muciniphila, Faecalibacterium prausnitzii,
-# or Methanobrevibacter smithii appear, then interpret
-# them using published studies.
-
 ## 2F. Differential Abundance (DESeq2)
 
 ## Use unrarefied phyloseq object (ms_ms), add 1 to all counts
@@ -161,7 +155,7 @@ res_df <- as.data.frame(res_early_vs_late) %>%
 tax_map <- as.data.frame(tax_full) %>%
   tibble::rownames_to_column("idx") %>%
   mutate(idx = as.integer(idx)) %>%
-  # keep the ASV hash + genus (add other ranks if you want)
+  # keep the ASV hash + genus
   transmute(
     idx,
     ASV_hash = ASV,
@@ -245,7 +239,6 @@ res_sig_tax_genus <- res_sig_tax %>%
   ) %>%
   arrange(log2FoldChange) %>%
   mutate(
-    # ✅ GUARANTEES uniqueness across the *entire* vector (no duplicates)
     Genus_plot = make.unique(Genus, sep = "_"),
     direction  = ifelse(log2FoldChange > 0, "Early-onset enriched", "Late-onset enriched"),
     Genus_plot = factor(Genus_plot, levels = Genus_plot)
