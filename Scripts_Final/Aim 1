@@ -78,7 +78,7 @@ meta <- meta %>%
   # 1) Drop truly missing onset_age
   filter(!is.na(onset_age)) %>%
   # 2) Drop onset ages outside your adult-onset window
-  filter(onset_age >= 18) %>%   # <= this is what fixes the extra NAs
+  filter(onset_age >= 18) %>%
   mutate(
     onset_age_group = cut(
       onset_age,
