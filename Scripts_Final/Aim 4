@@ -12,10 +12,10 @@ meta_ms_el <- meta_ms %>%
     )
   )
 
-table(meta_ms_el$onset_binary)  # sanity check: should show both early and late
+table(meta_ms_el$onset_binary)
 
 
-## 2. Select potential confounders (all columns here DO exist)
+## 2. Select potential confounders
 confounders <- meta_ms_el %>%
   select(
     # Demographic / anthropometric
@@ -77,7 +77,7 @@ confounders <- confounders[, non_all_na, drop = FALSE]
 non_constant <- sapply(confounders, function(x) dplyr::n_distinct(x, na.rm = TRUE) > 1)
 confounders <- confounders[, non_constant, drop = FALSE]
 
-str(confounders)  # optional: check what’s left
+str(confounders)
 
 
 ## 4. Build design matrix and scale
@@ -86,7 +86,7 @@ X_scaled <- scale(X_mat)
 
 ## 5. Outcome for RF
 outcome <- meta_ms_el$onset_binary
-table(outcome)  # should have both levels
+table(outcome) 
 
 set.seed(421)
 k <- 5
@@ -118,7 +118,7 @@ rf_conf$importance
 # 1. Coerce to a plain data.frame
 importance_df <- as.data.frame(rf_conf$importance)
 
-# 2. Take top 15 by MeanDecreaseGini using base/head (not slice)
+# 2. Take top 15 by MeanDecreaseGini using base/head
 importance_top <- importance_df %>%
   arrange(desc(MeanDecreaseGini))
 
@@ -145,7 +145,6 @@ ggsave("rf_confounders_importance_top15.png",
        gg_importance, width = 5, height = 4)
 
 # rf_conf$train_labels and rf_conf$test_labels
-# each have: row, true_labels, predicted_probabilities
 
 roc_train <- roc(
   response = rf_conf$train_labels$true_labels,
